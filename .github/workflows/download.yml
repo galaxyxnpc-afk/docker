@@ -1,6 +1,6 @@
 name: Download Docker Image
 
-# 触发条件：当推送到 main 分支，或者你手动点击运行时触发
+# 触发条件：当推送主分支，或者手动点击运行时触发
 on:
   push:
     branches: [ "main" ]
@@ -11,20 +11,24 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    # 1. 并在 GitHub 服务器上拉取目标 PHP 镜像
-    - name: Pull PHP Image
-      run: |
-        docker pull php:8.4.21-apache
+    # 1. 新增步骤：必须先拉取你仓库里的代码（这样 GitHub 才能拿到你的 Dockerfile）
+    - name: Checkout Code
+      uses: actions/checkout@v4
 
-    # 2. 将镜像保存为 tar 归档文件，并进行 gzip 压缩（减小文件体积，方便下载）
+    # 2. 核心修改：不再直接 pull 纯净镜像，而是根据你的 Dockerfile 现场编译出包含扩展的专属镜像
+    - name: Build Custom PHP Image
+      run: |
+        docker build -t php:8.4.21-apache .
+
+    # 3. 将刚刚编译好的定制镜像保存为 tar 归档文件
     - name: Save and Compress Image
       run: |
         docker save php:8.4.21-apache | gzip > php-8.4.21-apache.tar.gz
 
-    # 3. 将打包好的文件上传到 GitHub 的 Artifacts（下载产物）中
+    # 4. 上传包到 GitHub 的 Artifacts 中
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
         name: php-8.4.21-apache-image
         path: php-8.4.21-apache.tar.gz
-        retention-days: 1 # 下载链接保留1天
+        retention-days: 1
