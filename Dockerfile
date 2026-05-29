@@ -1,30 +1,31 @@
-name: Download Docker Image
+FROM php:8.4.21-apache
 
-# 触发条件：当推送到 main 分支，或者你手动点击运行时触发
-on:
-  push:
-    branches: [ "main" ]
-  workflow_dispatch:
+# 1. 用 apt 安装底层系统依赖库（对应你的 rpm 依赖，如 gd 库、zip 库、gettext 库等所需的底层 C 库）
+RUN apt-get update && apt-get install -y \
+    libpng-dev \
+    libjpeg-dev \
+    libfreetype6-dev \
+    libzip-dev \
+    libpcre3-dev \
+    && rm -rf /var/lib/apt/lists/*
 
-jobs:
-  download-and-pack:
-    runs-on: ubuntu-latest
+# 2. 配置并编译安装 PHP 官方原生自带的扩展
+# (包含：mysqli, pdo_mysql, pcntl, gettext, opcache, zip, 以及带有 freetype 和 jpeg 支持的 gd 库)
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install \
+    pdo_mysql \
+    mysqli \
+    gettext \
+    pcntl \
+    opcache \
+    zip \
+    gd
 
-    steps:
-    # 1. 并在 GitHub 服务器上拉取目标 PHP 镜像
-    - name: Pull PHP Image
-      run: |
-        docker pull php:8.4.21-apache
+# 3. 通过 pecl 安装第三方 Redis 扩展并启用（对应你的 php-pecl-redis）
+RUN pecl install redis && docker-php-ext-enable redis
 
-    # 2. 将镜像保存为 tar 归档文件，并进行 gzip 压缩（减小文件体积，方便下载）
-    - name: Save and Compress Image
-      run: |
-        docker save php:8.4.21-apache | gzip > php-8.4.21-apache.tar.gz
+# 4. 自动打通 Apache 的 URL 重写内核（省去在宿主机执行 a2enmod）
+RUN a2enmod rewrite
 
-    # 3. 将打包好的文件上传到 GitHub 的 Artifacts（下载产物）中
-    - name: Upload Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: php-8.4.21-apache-image
-        path: php-8.4.21-apache.tar.gz
-        retention-days: 1 # 下载链接保留1天
+# 5. 修改 Apache 主配置，允许 ThinkPHP 的 .htaccess 伪静态规则完全生效
+RUN sed -i 's/AllowOverride None/AllowOverride All/g' /etc/apache2/apache2.conf
