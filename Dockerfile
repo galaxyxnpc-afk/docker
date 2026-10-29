@@ -1,4 +1,4 @@
-FROM php:8.4.21-apache
+FROM php:8.4.27-apache
 
 # 设置工作目录
 WORKDIR /var/www/html
