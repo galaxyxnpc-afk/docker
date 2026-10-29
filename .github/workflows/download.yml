@@ -8,12 +8,12 @@ on:
 
 jobs:
   download-and-pack:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
     # 1. 新增步骤：必须先拉取你仓库里的代码（这样 GitHub 才能拿到你的 Dockerfile）
     - name: Checkout Code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     # 2. 核心修改：不再直接 pull 纯净镜像，而是根据你的 Dockerfile 现场编译出包含扩展的专属镜像
     - name: Build Custom PHP Image
@@ -27,7 +27,7 @@ jobs:
 
     # 4. 上传包到 GitHub 的 Artifacts 中
     - name: Upload Artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: php-8.4.27-apache-image
         path: php-8.4.27-apache.tar.gz
